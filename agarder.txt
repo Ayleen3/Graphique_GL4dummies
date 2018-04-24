@@ -1,0 +1,63 @@
+static void copyFromSurface(SDL_Surface * s, int x0, int y0) {
+  Uint32 * p, coul, ocoul;
+  Uint8 rmix, gmix, bmix;
+  double f1, f2;
+  int x, y, maxx, maxy;
+  assert(s->format->BytesPerPixel == 4); /* pour simplifier, on ne gère que le format RGBA */
+  p = s->pixels;
+  maxx = MIN(x0 + s->w, gl4dpGetWidth());
+  maxy = MIN(y0 + s->h, gl4dpGetHeight());
+  for(y = y0; y < maxy; y++) {
+    for(x = x0; x < maxx; x++) {
+      ocoul = gl4dpGetPixel(x, y);
+      coul = p[(s->h - 1 - (y - y0)) * s->w + x - x0]; /* axe y à l'envers */
+      f1 = ALPHA(coul) / 255.0; f2 = 1.0 - f1;
+      rmix = f1 *   RED(coul) + f2 *   RED(ocoul);
+      gmix = f1 * GREEN(coul) + f2 * GREEN(ocoul);
+      bmix = f1 *  BLUE(coul) + f2 *  BLUE(ocoul);
+      gl4dpSetColor(RGB(rmix, gmix, bmix));
+      gl4dpPutPixel(x, y);
+    }
+  }
+}
+
+
+void fond_ecran(int state) {
+  /* INITIALISEZ VOS VARIABLES */
+  static SDL_Surface * sprite = NULL;
+  static GLuint screen_id = 0;
+  switch(state) {
+  case GL4DH_INIT: {
+    /* INITIALISEZ VOTRE ANIMATION (SES VARIABLES <STATIC>s) */
+    SDL_Surface * s = IMG_Load("Greenhill.jpeg");
+    sprite = SDL_ConvertSurfaceFormat(s, SDL_PIXELFORMAT_ABGR8888, 0);
+    SDL_FreeSurface(s);
+    screen_id = gl4dpInitScreen();
+    gl4dpClearScreenWith(0xFFFFFFFF);
+    return;
+  }
+  case GL4DH_FREE:
+    /* LIBERER LA MEMOIRE UTILISEE PAR LES <STATIC>s */
+    gl4dpSetScreen(screen_id);
+    gl4dpDeleteScreen();
+    if(sprite) {
+      SDL_FreeSurface(sprite);
+      sprite = NULL;
+    }
+    return;
+    case GL4DH_UPDATE_WITH_AUDIO:
+    /* METTRE A JOUR VOTRE ANIMATION EN FONCTION DU SON */
+    return;
+  
+  default: /* GL4DH_DRAW */
+    glDisable(GL_BLEND);
+    glDisable(GL_DEPTH_TEST);
+  gl4dpSetScreen(screen_id);
+    copyFromSurface(sprite, gl4dpGetWidth()/999,gl4dpGetHeight()/100);
+    gl4dpUpdateScreen(NULL);
+    return;
+  }
+}
+
+
+
